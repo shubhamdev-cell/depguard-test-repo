@@ -1,0 +1,35 @@
+﻿name: DepGuard Security Scan
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  depguard-scan:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Windows, X64]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run DepGuard security scan
+        shell: powershell
+        env:
+          DEPGUARD_CI_TOKEN: ${{ secrets.DEPGUARD_CI_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ([string]::IsNullOrWhiteSpace($env:DEPGUARD_CI_TOKEN)) {
+            throw "DEPGUARD_CI_TOKEN secret is missing."
+          }
+          & ".\scripts\depguard-github-ci.ps1" -SourcePath $env:GITHUB_WORKSPACE
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
